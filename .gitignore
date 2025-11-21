@@ -1,0 +1,20 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Node modules (if you add any JS dependencies later)
+node_modules/
+package-lock.json
+
+# Python (optional - only if you want to exclude from GitHub)
+# __pycache__/
+# *.pyc

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Santa Scoreboard - Christmas Tree Packing Challenge Solution">
+    <title>Santa Scoreboard - Christmas Tree Packing Challenge</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Santa Scoreboard</h1>
+            <p class="subtitle">Christmas Tree Packing Challenge</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="intro">
+            <h2>About the Competition</h2>
+            <p>
+                The Santa 2025 - Christmas Tree Packing Challenge is a Kaggle competition focused on 
+                optimizing the placement and orientation of Christmas trees in a constrained space.
+                This competition features <strong>200 tasks</strong>, each requiring strategic placement 
+                and rotation of items to maximize the overall score.
+            </p>
+            <div class="link-box">
+                <a href="https://www.kaggle.com/competitions/santa-2025/discussion/631178" 
+                   target="_blank" 
+                   class="btn btn-primary">
+                    View Kaggle Discussion
+                </a>
+                <a href="https://www.kaggle.com/competitions/santa-2025" 
+                   target="_blank" 
+                   class="btn btn-secondary">
+                    Competition Page
+                </a>
+            </div>
+        </section>
+
+        <section class="scores-section">
+            <h2>Task Scores</h2>
+            <div class="scores-summary">
+                <div class="score-stat">
+                    <span class="stat-value" id="total-score-display">-</span>
+                    <span class="stat-label">Total Score</span>
+                </div>
+            </div>
+            <div class="scores-table-container">
+                <p>Individual task scores:</p>
+                <div class="filter-container">
+                    <label for="task-filter">Filter tasks:</label>
+                    <input type="text" id="task-filter" placeholder="Enter task ID (e.g., 001, 100, 150-200)" />
+                </div>
+                <div class="table-container">
+                    <table id="scores-table">
+                        <thead>
+                            <tr>
+                                <th>Task ID</th>
+                                <th>Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scores-body">
+                            <!-- Scores will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+                <p class="small-text">
+                    ✓ Official Competition Metric: score = Σ(s²/n) where s = side length of square bounding box, n = number of trees.
+                    Lower scores indicate more compact packing. 
+                    See <a href="https://www.kaggle.com/code/metric/santa-2025-metric" target="_blank">Metric Notebook</a> for details.
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Santa 2025 Solution | <a href="https://www.kaggle.com/competitions/santa-2025" target="_blank">Kaggle Competition</a></p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
