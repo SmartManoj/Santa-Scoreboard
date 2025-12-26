@@ -551,6 +551,8 @@ int main(int argc, char** argv) {
 
     for (int iters = 100; iters < 10000 && !converged; iters += 100) {
         bool improvedThisLevel = false;
+        int noImprovementRestarts = 0;
+        const int maxNoImprovementRestarts = 10;
 
         for (int restarts = 10; restarts < 1000; restarts += 10) {
             totalIterations++;
@@ -587,12 +589,19 @@ int main(int argc, char** argv) {
                 bestOverallScore = newScore;
                 bestOverall = o;
                 improvedThisLevel = true;
+                noImprovementRestarts = 0;
 
                 // Save intermediate result
                 cfg[targetN] = bestOverall;
                 saveCSV(out, cfg);
             } else {
-                printf("No improvement, score=%.12Lf [%.1Lfs]\n", newScore, el);
+                noImprovementRestarts++;
+                printf("No improvement (%d/%d) score=%.12Lf [%.1Lfs]\n",
+                       noImprovementRestarts, maxNoImprovementRestarts, newScore, el);
+                if (noImprovementRestarts >= maxNoImprovementRestarts) {
+                    printf("Moving to next iters level...\n");
+                    break;
+                }
             }
         }
 
