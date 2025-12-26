@@ -75,7 +75,15 @@ inline bool segInt(long double ax, long double ay, long double bx, long double b
 }
 
 inline bool overlap(const Poly& a, const Poly& b) {
+    // Fast bounding box check
     if (a.x1 < b.x0 || b.x1 < a.x0 || a.y1 < b.y0 || b.y1 < a.y0) return false;
+
+    // Centroid distance check - trees have max radius ~0.8, so if centers > 1.6 apart, no overlap
+    long double acx = (a.x0 + a.x1) * 0.5L, acy = (a.y0 + a.y1) * 0.5L;
+    long double bcx = (b.x0 + b.x1) * 0.5L, bcy = (b.y0 + b.y1) * 0.5L;
+    long double dx = acx - bcx, dy = acy - bcy;
+    if (dx * dx + dy * dy > 2.56L) return false;  // 1.6^2 = 2.56
+
     for (int i = 0; i < NV; i++) {
         if (pip(a.px[i], a.py[i], b)) return true;
         if (pip(b.px[i], b.py[i], a)) return true;
@@ -592,10 +600,6 @@ int main(int argc, char** argv) {
                     bestOverall = o;
                     improvedThisLevel = true;
                     noImprovementRestarts = 0;
-
-                    // Save intermediate result
-                    cfg[targetN] = bestOverall;
-                    saveCSV(out, cfg);
                     totalIterations++;
                     // Continue with same (iters, restarts)
                 } else {
@@ -634,6 +638,7 @@ int main(int argc, char** argv) {
     printf("FINAL RESULT for n=%d\n", targetN);
     printf("Initial: %.12Lf\n", initialScore);
     printf("Final:   %.12Lf\n", bestOverallScore);
+    printf("Diff:    %.12Lf\n", initialScore - bestOverallScore);
     if (bestOverallScore < initialScore - 1e-10L) {
         printf("Total improvement: %.4Lf%%\n", (initialScore - bestOverallScore) / initialScore * 100.0L);
     } else {
