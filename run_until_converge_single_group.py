@@ -18,11 +18,6 @@ def main():
     previous_score = None
     start_time = datetime.now()
     while True:
-        elapsed_time = datetime.now() - start_time
-        print(f"Time elapsed: {elapsed_time}")
-        if elapsed_time > timedelta(hours=11):
-            print("Time limit exceeded!")
-            break
         iteration += 1
         print(f"\n{'='*50}")
         print(f"Iteration {iteration}")
@@ -34,11 +29,18 @@ def main():
         # Run tree_packer
         os.system(cmd)
         
+        elapsed_time = datetime.now() - start_time
+        print(f"Time elapsed: {elapsed_time}")
+        if elapsed_time > timedelta(hours=11):
+            print("Time limit exceeded!")
+            break
+
         # Check if files are different
         new_hash = file_hash('submission.csv')
         if initial_hash == new_hash:
             print("\nNo changes detected. Convergence achieved!")
             break
+
     
     print(f"\nCompleted after {iteration} iteration(s)")
     # from pymsgbox import alert
