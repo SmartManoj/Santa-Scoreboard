@@ -559,49 +559,56 @@ int main(int argc, char** argv) {
 
             auto t0 = chrono::high_resolution_clock::now();
 
-            printf("\n[%d] iters=%d, restarts=%d\n", totalIterations, iters, restarts);
+            // Keep running same (iters, restarts) while it improves
+            while (true) {
+                printf("\n[%d] iters=%d, restarts=%d\n", totalIterations, iters, restarts);
 
-            Cfg c = bestOverall;  // Start from best known
-            Cfg o = optimizeParallel(c, iters, max(4, restarts));
+                Cfg c = bestOverall;  // Start from best known
+                Cfg o = optimizeParallel(c, iters, max(4, restarts));
 
-            bool o_ovl = o.anyOvl();
-            bool c_ovl = c.anyOvl();
+                bool o_ovl = o.anyOvl();
+                bool c_ovl = c.anyOvl();
 
-            // Keep better solution
-            if (!c_ovl && o_ovl) {
-                o = c;
-            } else if (!c_ovl && !o_ovl && o.side() > c.side() + 1e-14L) {
-                o = c;
-            } else if (c_ovl && o_ovl && o.side() > c.side() + 1e-14L) {
-                o = c;
+                // Keep better solution
+                if (!c_ovl && o_ovl) {
+                    o = c;
+                } else if (!c_ovl && !o_ovl && o.side() > c.side() + 1e-14L) {
+                    o = c;
+                } else if (c_ovl && o_ovl && o.side() > c.side() + 1e-14L) {
+                    o = c;
+                }
+
+                long double newScore = o.score();
+
+                auto t1 = chrono::high_resolution_clock::now();
+                long double el = chrono::duration_cast<chrono::milliseconds>(t1-t0).count() / 1000.0L;
+
+                // Check for improvement
+                if (newScore < bestOverallScore - 1e-12L) {
+                    long double improvement = (bestOverallScore - newScore) / bestOverallScore * 100.0L;
+                    printf("NEW BEST: %.12Lf -> %.12Lf (%.4Lf%% improvement) [%.1Lfs]\n",
+                           bestOverallScore, newScore, improvement, el);
+                    bestOverallScore = newScore;
+                    bestOverall = o;
+                    improvedThisLevel = true;
+                    noImprovementRestarts = 0;
+
+                    // Save intermediate result
+                    cfg[targetN] = bestOverall;
+                    saveCSV(out, cfg);
+                    totalIterations++;
+                    // Continue with same (iters, restarts)
+                } else {
+                    noImprovementRestarts++;
+                    printf("No improvement (%d/%d) score=%.12Lf [%.1Lfs]\n",
+                           noImprovementRestarts, maxNoImprovementRestarts, newScore, el);
+                    break;  // Exit while loop, try next restarts value
+                }
             }
 
-            long double newScore = o.score();
-
-            auto t1 = chrono::high_resolution_clock::now();
-            long double el = chrono::duration_cast<chrono::milliseconds>(t1-t0).count() / 1000.0L;
-
-            // Check for improvement
-            if (newScore < bestOverallScore - 1e-12L) {
-                long double improvement = (bestOverallScore - newScore) / bestOverallScore * 100.0L;
-                printf("NEW BEST: %.12Lf -> %.12Lf (%.12Lf%% improvement) [%.1Lfs]\n",
-                       bestOverallScore, newScore, improvement, el);
-                bestOverallScore = newScore;
-                bestOverall = o;
-                improvedThisLevel = true;
-                noImprovementRestarts = 0;
-
-                // Save intermediate result
-                cfg[targetN] = bestOverall;
-                saveCSV(out, cfg);
-            } else {
-                noImprovementRestarts++;
-                printf("No improvement (%d/%d) score=%.12Lf [%.1Lfs]\n",
-                       noImprovementRestarts, maxNoImprovementRestarts, newScore, el);
-                if (noImprovementRestarts >= maxNoImprovementRestarts) {
-                    printf("Moving to next iters level...\n");
-                    break;
-                }
+            if (noImprovementRestarts >= maxNoImprovementRestarts) {
+                printf("Moving to next iters level...\n");
+                break;
             }
         }
 
