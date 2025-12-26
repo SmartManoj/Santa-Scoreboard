@@ -584,7 +584,7 @@ int main(int argc, char** argv) {
             // Check for improvement
             if (newScore < bestOverallScore - 1e-12L) {
                 long double improvement = (bestOverallScore - newScore) / bestOverallScore * 100.0L;
-                printf("NEW BEST: %.12Lf -> %.12Lf (%.4Lf%% improvement) [%.1Lfs]\n",
+                printf("NEW BEST: %.12Lf -> %.12Lf (%.12Lf%% improvement) [%.1Lfs]\n",
                        bestOverallScore, newScore, improvement, el);
                 bestOverallScore = newScore;
                 bestOverall = o;
