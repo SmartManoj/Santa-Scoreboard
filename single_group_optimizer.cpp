@@ -522,7 +522,7 @@ int main(int argc, char** argv) {
     }
 
     int numThreads = omp_get_max_threads();
-    printf("Single Group Optimizer (%d threads)\n v1", numThreads);
+    printf("Single Group Optimizer (%d threads) v2 \n ", numThreads);
     printf("Target group: n=%d\n", targetN);
     printf("Loading %s...\n", in.c_str());
 
