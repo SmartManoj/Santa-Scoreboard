@@ -557,18 +557,10 @@ int main(int argc, char** argv) {
 
             auto t0 = chrono::high_resolution_clock::now();
 
-            // Scale based on target group size
-            int it = iters, r = restarts;
-            if (targetN <= 10) { it = (int)(iters * 2.5); r = restarts * 2; }
-            else if (targetN <= 30) { it = (int)(iters * 1.8); r = (int)(restarts * 1.5); }
-            else if (targetN <= 60) { it = (int)(iters * 1.3); r = restarts; }
-            else if (targetN > 150) { it = (int)(iters * 0.7); r = (int)(restarts * 0.8); }
-
-            printf("\n[%d] iters=%d, restarts=%d (scaled: it=%d, r=%d)\n",
-                   totalIterations, iters, restarts, it, max(4, r));
+            printf("\n[%d] iters=%d, restarts=%d\n", totalIterations, iters, restarts);
 
             Cfg c = bestOverall;  // Start from best known
-            Cfg o = optimizeParallel(c, it, max(4, r));
+            Cfg o = optimizeParallel(c, iters, max(4, restarts));
 
             bool o_ovl = o.anyOvl();
             bool c_ovl = c.anyOvl();
