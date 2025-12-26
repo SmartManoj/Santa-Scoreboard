@@ -500,8 +500,7 @@ void saveCSV(const string& fn, const map<int, Cfg>& cfg) {
 }
 
 int main(int argc, char** argv) {
-    string in="submission.csv", out="submission_optimized.csv";
-    int iters=15000, restarts=16;
+    string in="submission.csv", out="submission.csv";
 
     // Get group number from environment variable
     const char* groupEnv = getenv("GROUP_NUMBER");
@@ -520,14 +519,11 @@ int main(int argc, char** argv) {
         string a = argv[i];
         if (a=="-i" && i+1<argc) in=argv[++i];
         else if (a=="-o" && i+1<argc) out=argv[++i];
-        else if (a=="-n" && i+1<argc) iters=stoi(argv[++i]);
-        else if (a=="-r" && i+1<argc) restarts=stoi(argv[++i]);
     }
 
     int numThreads = omp_get_max_threads();
     printf("Single Group Optimizer (%d threads)\n", numThreads);
     printf("Target group: n=%d\n", targetN);
-    printf("Iterations: %d, Restarts: %d\n", iters, restarts);
     printf("Loading %s...\n", in.c_str());
 
     auto cfg = loadCSV(in);
@@ -539,61 +535,109 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    Cfg c = cfg[targetN];
-    long double os = c.score();
-    printf("Initial score for n=%d: %.12Lf\n", targetN, os);
-    printf("Initial side: %.12Lf\n", c.side());
-    if (c.anyOvl()) printf("WARNING: Initial config has overlaps!\n");
+    auto globalStart = chrono::high_resolution_clock::now();
 
-    auto t0 = chrono::high_resolution_clock::now();
+    Cfg bestOverall = cfg[targetN];
+    long double bestOverallScore = bestOverall.score();
+    long double initialScore = bestOverallScore;
 
-    int it = iters, r = restarts;
-    if (targetN <= 10) { it = (int)(iters * 2.5); r = restarts * 2; }
-    else if (targetN <= 30) { it = (int)(iters * 1.8); r = (int)(restarts * 1.5); }
-    else if (targetN <= 60) { it = (int)(iters * 1.3); r = restarts; }
-    else if (targetN > 150) { it = (int)(iters * 0.7); r = (int)(restarts * 0.8); }
+    printf("Initial score for n=%d: %.12Lf\n", targetN, initialScore);
+    if (bestOverall.anyOvl()) printf("WARNING: Initial config has overlaps!\n");
 
-    printf("Optimizing with iters=%d, restarts=%d...\n", it, max(4, r));
-    Cfg o = optimizeParallel(c, it, max(4, r));
+    int noImprovementLevels = 0;
+    const int maxNoImprovementLevels = 5;  // Break after 5 consecutive iters levels with no improvement
+    int totalIterations = 0;
+    bool converged = false;
 
-    bool o_ovl = o.anyOvl();
-    bool c_ovl = c.anyOvl();
+    for (int iters = 100; iters < 10000 && !converged; iters += 100) {
+        bool improvedThisLevel = false;
 
-    if (!c_ovl && o_ovl) {
-        o = c;
-    } else if (c_ovl && !o_ovl) {
-        // Keep o
-    } else if (!c_ovl && !o_ovl && o.side() > c.side() + 1e-14L) {
-        o = c;
-    } else if (c_ovl && o_ovl) {
-        if (o.side() > c.side() + 1e-14L) {
-            o = c;
+        for (int restarts = 10; restarts < 1000; restarts += 10) {
+            totalIterations++;
+
+            auto t0 = chrono::high_resolution_clock::now();
+
+            // Scale based on target group size
+            int it = iters, r = restarts;
+            if (targetN <= 10) { it = (int)(iters * 2.5); r = restarts * 2; }
+            else if (targetN <= 30) { it = (int)(iters * 1.8); r = (int)(restarts * 1.5); }
+            else if (targetN <= 60) { it = (int)(iters * 1.3); r = restarts; }
+            else if (targetN > 150) { it = (int)(iters * 0.7); r = (int)(restarts * 0.8); }
+
+            printf("\n[%d] iters=%d, restarts=%d (scaled: it=%d, r=%d)\n",
+                   totalIterations, iters, restarts, it, max(4, r));
+
+            Cfg c = bestOverall;  // Start from best known
+            Cfg o = optimizeParallel(c, it, max(4, r));
+
+            bool o_ovl = o.anyOvl();
+            bool c_ovl = c.anyOvl();
+
+            // Keep better solution
+            if (!c_ovl && o_ovl) {
+                o = c;
+            } else if (!c_ovl && !o_ovl && o.side() > c.side() + 1e-14L) {
+                o = c;
+            } else if (c_ovl && o_ovl && o.side() > c.side() + 1e-14L) {
+                o = c;
+            }
+
+            long double newScore = o.score();
+
+            auto t1 = chrono::high_resolution_clock::now();
+            long double el = chrono::duration_cast<chrono::milliseconds>(t1-t0).count() / 1000.0L;
+
+            // Check for improvement
+            if (newScore < bestOverallScore - 1e-12L) {
+                long double improvement = (bestOverallScore - newScore) / bestOverallScore * 100.0L;
+                printf("NEW BEST: %.12Lf -> %.12Lf (%.4Lf%% improvement) [%.1Lfs]\n",
+                       bestOverallScore, newScore, improvement, el);
+                bestOverallScore = newScore;
+                bestOverall = o;
+                improvedThisLevel = true;
+
+                // Save intermediate result
+                cfg[targetN] = bestOverall;
+                saveCSV(out, cfg);
+            } else {
+                printf("No improvement, score=%.12Lf [%.1Lfs]\n", newScore, el);
+            }
+        }
+
+        // Track per-iters-level improvement
+        if (improvedThisLevel) {
+            noImprovementLevels = 0;
+            printf("\n=== iters=%d: IMPROVED ===\n", iters);
+        } else {
+            noImprovementLevels++;
+            printf("\n=== iters=%d: No improvement (%d/%d levels) ===\n",
+                   iters, noImprovementLevels, maxNoImprovementLevels);
+            if (noImprovementLevels >= maxNoImprovementLevels) {
+                printf("\nConverged: No improvement for %d consecutive iters levels\n", maxNoImprovementLevels);
+                converged = true;
+            }
         }
     }
 
-    // Update the target group in cfg
-    cfg[targetN] = o;
-    long double ns = o.score();
-
-    auto t1 = chrono::high_resolution_clock::now();
-    long double el = chrono::duration_cast<chrono::milliseconds>(t1-t0).count() / 1000.0L;
+    auto globalEnd = chrono::high_resolution_clock::now();
+    long double totalTime = chrono::duration_cast<chrono::milliseconds>(globalEnd-globalStart).count() / 1000.0L;
 
     printf("\n========================================\n");
-    printf("n=%3d: %.12Lf -> %.12Lf\n", targetN, os, ns);
-    if (c_ovl && !o_ovl) {
-        printf("FIXED OVERLAP! Improvement: %.4Lf%%\n", (os-ns)/os*100.0L);
-    } else if (o_ovl) {
-        printf("WARNING - still has overlap!\n");
-    } else if (ns < os - 1e-10L) {
-        printf("Improvement: %.4Lf%%\n", (os-ns)/os*100.0L);
+    printf("FINAL RESULT for n=%d\n", targetN);
+    printf("Initial: %.12Lf\n", initialScore);
+    printf("Final:   %.12Lf\n", bestOverallScore);
+    if (bestOverallScore < initialScore - 1e-10L) {
+        printf("Total improvement: %.4Lf%%\n", (initialScore - bestOverallScore) / initialScore * 100.0L);
     } else {
-        printf("No improvement\n");
+        printf("No overall improvement\n");
     }
-    printf("Time: %.1Lfs (with %d threads)\n", el, numThreads);
+    printf("Total iterations: %d\n", totalIterations);
+    printf("Total time: %.1Lfs (with %d threads)\n", totalTime, numThreads);
     printf("========================================\n");
 
+    cfg[targetN] = bestOverall;
     saveCSV(out, cfg);
-    printf("Saved all groups to %s\n", out.c_str());
+    printf("Saved to %s\n", out.c_str());
     return 0;
 }
 
