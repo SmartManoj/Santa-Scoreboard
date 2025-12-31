@@ -19,6 +19,8 @@ def main():
     start_time = datetime.now()
     while True:
         iteration += 1
+        cmd = f'tmux set-option status-right "$GROUP_NUMBER #{iteration}"'
+        os.system(cmd)
         print(f"\n{'='*50}")
         print(f"Iteration {iteration}")
         print(f"{'='*50}\n")
