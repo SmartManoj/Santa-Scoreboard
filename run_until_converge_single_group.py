@@ -33,9 +33,6 @@ def main():
         
         elapsed_time = datetime.now() - start_time
         print(f"Time elapsed: {elapsed_time}")
-        if elapsed_time > timedelta(hours=11):
-            print("Time limit exceeded!")
-            break
 
         # Check if files are different
         new_hash = file_hash('submission.csv')
